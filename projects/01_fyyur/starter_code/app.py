@@ -252,6 +252,7 @@ def show_venue(venue_id):
     "upcoming_shows_count": 1,
   }
   data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
+
   return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -326,16 +327,27 @@ def delete_venue(venue_id):
 @app.route('/artists')
 def artists():
   # TODO: replace with real data returned from querying the database
-  data=[{
-    "id": 4,
-    "name": "Guns N Petals",
-  }, {
-    "id": 5,
-    "name": "Matt Quevedo",
-  }, {
-    "id": 6,
-    "name": "The Wild Sax Band",
-  }]
+  # data=[{
+  #   "id": 4,
+  #   "name": "Guns N Petals",
+  # }, {
+  #   "id": 5,
+  #   "name": "Matt Quevedo",
+  # }, {
+  #   "id": 6,
+  #   "name": "The Wild Sax Band",
+  # }]
+  all_artist = Artist.query.all()
+  data=[]
+  
+  for artist in all_artist:
+    artist_list = {
+      "id": artist.id,
+      "name":artist.name
+    }
+    data.append(artist_list)
+
+
   return render_template('pages/artists.html', artists=data)
 
 @app.route('/artists/search', methods=['POST'])
@@ -501,9 +513,11 @@ def create_artist_submission():
   error = False
   form = ArtistForm(request.form)
 
+
   try:
     
-        name=form.name.data,
+      artist= Artist(
+      name=form.name.data,
         city=form.city.data,
         state=form.state.data,
         phone=form.phone.data,
@@ -512,39 +526,21 @@ def create_artist_submission():
         facebook_link=form.facebook_link.data,
         website_link=form.website_link.data,
         seeking_venue=form.seeking_venue.data,
-        seeking_description=form.seeking_description.data
+        seeking_description=form.seeking_description.data)
+      db.session.add(artist)
+      db.session.commit()
 
-      # artist= Artist(
-      #   name=form.name.data,
-      #   city=form.city.data,
-      #   state=form.state.data,
-      #   phone=form.phone.data,
-      #   genres=form.genres.data,
-      #   image_link=form.image_link.data,
-      #   facebook_link=form.facebook_link.data,
-      #   website_link=form.website_link.data,
-      #   seeking_venue=form.seeking_venue.data,
-      #   seeking_description=form.seeking_description.data)
-        artist= Artist(name=name, city=city, state=state,
-          phone=phone,
-          genres=genres,
-          image_link=image_link,
-          facebook_link=facebook_link,
-          website_link=website_link,
-          seeking_venue=seeking_venue,
-          seeking_description=seeking_description)
-        db.session.add(artist)
-        db.session.commit()
-
-        flash('Artist ' + request.form['name'] + ' was successfully listed!')
-  except:
-    error=True
+      flash('Artist ' + request.form['name'] + ' was successfully listed!')
+  except:   
     db.session.rollback()
+    error=True
     print(sys.exc_info)
-    flash('error has occured' + request.form['name' + 'could not be listed'])
+    flash('error has occured')
   finally:
     db.session.close()
     return render_template('pages/home.html')
+
+
  
  # TODO: modify data to be the data object returned from db insertion
   # on successful db insert, flash success
