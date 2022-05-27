@@ -3,6 +3,7 @@
 #----------------------------------------------------------------------------#
 
 import json
+from operator import itemgetter
 import sys
 import dateutil.parser
 import babel
@@ -12,6 +13,7 @@ from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
+from sqlalchemy import DateTime
 from forms import *
 from flask_migrate import Migrate
 #----------------------------------------------------------------------------#
@@ -48,7 +50,7 @@ class Venue(db.Model):
     seeking_description = db.Column(db.String(120))    
 
 def __repr__(self):
-    return f'<Venue {self.id} {self.name} {self.state}>'
+    return f'<Venue {self.id} {self.name}>'
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 class Artist(db.Model):
@@ -108,7 +110,25 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-  data= Venue.query.all()
+  venues= Venue.query.group_by(Venue.city,Venue.state, Venue.id, Venue.name).distinct(Venue.city, Venue.state)
+  data=[]
+  
+  for venue in venues:   
+    upcoming_shows = Show.query.filter(Show.start_time > datetime.now()).all()
+    venue_list = {
+      "id": venue.id,
+      "name":venue.name,
+      "num_upcoming_shows": len(upcoming_shows)
+    }
+    states = {
+      "city": venue.city,
+      "state":venue.state,
+      "venues":[venue_list]
+    }
+    data.append(states)
+
+
+ 
   # data=[
   #   {
   #   "city": "San Francisco",
@@ -133,7 +153,7 @@ def venues():
   #   }]
   # }
   # ]
-  return render_template('pages/venues.html', areas=data);
+  return render_template('pages/venues.html', areas=data)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -267,9 +287,9 @@ def create_venue_submission():
       db.session.commit()
 
       flash('Venue ' + request.form['name'] + ' was successfully listed!')
-  except:
-    error=True
+  except:   
     db.session.rollback()
+    error=True
     print(sys.exc_info)
     flash('error has occured')
   finally:
@@ -483,7 +503,6 @@ def create_artist_submission():
 
   try:
     
-      artist= Artist(
         name=form.name.data,
         city=form.city.data,
         state=form.state.data,
@@ -493,11 +512,31 @@ def create_artist_submission():
         facebook_link=form.facebook_link.data,
         website_link=form.website_link.data,
         seeking_venue=form.seeking_venue.data,
-        seeking_description=form.seeking_description.data)
-      db.session.add(artist)
-      db.session.commit()
+        seeking_description=form.seeking_description.data
 
-      flash('Artist ' + request.form['name'] + ' was successfully listed!')
+      # artist= Artist(
+      #   name=form.name.data,
+      #   city=form.city.data,
+      #   state=form.state.data,
+      #   phone=form.phone.data,
+      #   genres=form.genres.data,
+      #   image_link=form.image_link.data,
+      #   facebook_link=form.facebook_link.data,
+      #   website_link=form.website_link.data,
+      #   seeking_venue=form.seeking_venue.data,
+      #   seeking_description=form.seeking_description.data)
+        artist= Artist(name=name, city=city, state=state,
+          phone=phone,
+          genres=genres,
+          image_link=image_link,
+          facebook_link=facebook_link,
+          website_link=website_link,
+          seeking_venue=seeking_venue,
+          seeking_description=seeking_description)
+        db.session.add(artist)
+        db.session.commit()
+
+        flash('Artist ' + request.form['name'] + ' was successfully listed!')
   except:
     error=True
     db.session.rollback()
